@@ -90,6 +90,30 @@ const NOOP = () => { };
  * Api to connect to a remote AceBase server over http(s)
  */
 export class WebApi extends Api {
+    /**
+     * Allow cursor used for synchronization to be changed. Should only be done while not connected.
+     */
+    setSyncCursor(cursor) {
+        this._cursor.sync = cursor;
+    }
+    getSyncCursor() {
+        return this._cursor.sync;
+    }
+    get host() { return this.settings.url; }
+    get url() { return `${this.settings.url}${this.settings.rootPath ? `/${this.settings.rootPath}` : ''}`; }
+    async _updateCursor(cursor) {
+        if (!cursor || (this._cursor.current && cursor < this._cursor.current)) {
+            return; // Just in case this ever happens, ignore events with earlier cursors.
+        }
+        this._cursor.current = cursor;
+    }
+    get hasCache() { return !!this._cache; }
+    get cache() {
+        if (!this._cache) {
+            throw new Error('DEV ERROR: no cache db is used');
+        }
+        return this._cache;
+    }
     constructor(dbname = 'default', settings, callback) {
         // operations are done through http calls,
         // events are triggered through a websocket
@@ -142,30 +166,6 @@ export class WebApi extends Api {
                 this.connect().catch(NOOP);
             }
         }
-    }
-    /**
-     * Allow cursor used for synchronization to be changed. Should only be done while not connected.
-     */
-    setSyncCursor(cursor) {
-        this._cursor.sync = cursor;
-    }
-    getSyncCursor() {
-        return this._cursor.sync;
-    }
-    get host() { return this.settings.url; }
-    get url() { return `${this.settings.url}${this.settings.rootPath ? `/${this.settings.rootPath}` : ''}`; }
-    async _updateCursor(cursor) {
-        if (!cursor || (this._cursor.current && cursor < this._cursor.current)) {
-            return; // Just in case this ever happens, ignore events with earlier cursors.
-        }
-        this._cursor.current = cursor;
-    }
-    get hasCache() { return !!this._cache; }
-    get cache() {
-        if (!this._cache) {
-            throw new Error('DEV ERROR: no cache db is used');
-        }
-        return this._cache;
     }
     async checkConnection() {
         // Websocket connection is used
@@ -1344,7 +1344,7 @@ export class WebApi extends Api {
                     const valueSubscriptions = subs.filter(sub => sub.event === 'value');
                     if (valueSubscriptions.length > 0) {
                         const p = this.get(path, { allow_cache: false }).then(value => {
-                            valueSubscriptions.forEach(subscr => subscr.callback(null, path, value)); // No previous value!
+                            valueSubscriptions.forEach(subscr => subscr.callback(null, path, value.value, null, value.context)); // No previous value!
                         });
                         syncPromises.push(p);
                     }

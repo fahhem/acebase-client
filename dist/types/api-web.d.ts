@@ -12,12 +12,12 @@ export interface IAceBaseAuthProviderTokens {
     refresh_token: string;
     expires_in: number;
 }
-declare type EventSubscriptionSettings = {
+type EventSubscriptionSettings = {
     newOnly: boolean;
     cancelCallback: (reason: Error) => any;
     syncFallback: 'reload' | (() => any | Promise<any>);
 };
-export declare type HttpMethod = 'get' | 'post' | 'put' | 'delete';
+export type HttpMethod = 'get' | 'post' | 'put' | 'delete';
 /**
  * Api to connect to a remote AceBase server over http(s)
  */

@@ -332,7 +332,7 @@ class AceBaseClient extends acebase_core_1.AceBaseBase {
 exports.AceBaseClient = AceBaseClient;
 
 }).call(this)}).call(this,require('_process'))
-},{"./api-web":2,"./auth":3,"./server-date":12,"_process":40,"acebase-core":25}],2:[function(require,module,exports){
+},{"./api-web":2,"./auth":3,"./server-date":12,"_process":41,"acebase-core":25}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebApi = void 0;
@@ -428,6 +428,30 @@ const NOOP = () => { };
  * Api to connect to a remote AceBase server over http(s)
  */
 class WebApi extends acebase_core_1.Api {
+    /**
+     * Allow cursor used for synchronization to be changed. Should only be done while not connected.
+     */
+    setSyncCursor(cursor) {
+        this._cursor.sync = cursor;
+    }
+    getSyncCursor() {
+        return this._cursor.sync;
+    }
+    get host() { return this.settings.url; }
+    get url() { return `${this.settings.url}${this.settings.rootPath ? `/${this.settings.rootPath}` : ''}`; }
+    async _updateCursor(cursor) {
+        if (!cursor || (this._cursor.current && cursor < this._cursor.current)) {
+            return; // Just in case this ever happens, ignore events with earlier cursors.
+        }
+        this._cursor.current = cursor;
+    }
+    get hasCache() { return !!this._cache; }
+    get cache() {
+        if (!this._cache) {
+            throw new Error('DEV ERROR: no cache db is used');
+        }
+        return this._cache;
+    }
     constructor(dbname = 'default', settings, callback) {
         // operations are done through http calls,
         // events are triggered through a websocket
@@ -480,30 +504,6 @@ class WebApi extends acebase_core_1.Api {
                 this.connect().catch(NOOP);
             }
         }
-    }
-    /**
-     * Allow cursor used for synchronization to be changed. Should only be done while not connected.
-     */
-    setSyncCursor(cursor) {
-        this._cursor.sync = cursor;
-    }
-    getSyncCursor() {
-        return this._cursor.sync;
-    }
-    get host() { return this.settings.url; }
-    get url() { return `${this.settings.url}${this.settings.rootPath ? `/${this.settings.rootPath}` : ''}`; }
-    async _updateCursor(cursor) {
-        if (!cursor || (this._cursor.current && cursor < this._cursor.current)) {
-            return; // Just in case this ever happens, ignore events with earlier cursors.
-        }
-        this._cursor.current = cursor;
-    }
-    get hasCache() { return !!this._cache; }
-    get cache() {
-        if (!this._cache) {
-            throw new Error('DEV ERROR: no cache db is used');
-        }
-        return this._cache;
     }
     async checkConnection() {
         var _a, _b;
@@ -1694,7 +1694,7 @@ class WebApi extends acebase_core_1.Api {
                     const valueSubscriptions = subs.filter(sub => sub.event === 'value');
                     if (valueSubscriptions.length > 0) {
                         const p = this.get(path, { allow_cache: false }).then(value => {
-                            valueSubscriptions.forEach(subscr => subscr.callback(null, path, value)); // No previous value!
+                            valueSubscriptions.forEach(subscr => subscr.callback(null, path, value.value, null, value.context)); // No previous value!
                         });
                         syncPromises.push(p);
                     }
@@ -2474,7 +2474,7 @@ class WebApi extends acebase_core_1.Api {
 }
 exports.WebApi = WebApi;
 
-},{"./base64":4,"./errors":6,"./promise-timeout":9,"./request":10,"./request/error":11,"acebase-core":25,"socket.io-client":41}],3:[function(require,module,exports){
+},{"./base64":4,"./errors":6,"./promise-timeout":9,"./request":10,"./request/error":11,"acebase-core":25,"socket.io-client":42}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AceBaseClientAuth = void 0;
@@ -3115,15 +3115,15 @@ exports.default = request;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NOT_CONNECTED_ERROR_MESSAGE = exports.AceBaseRequestError = void 0;
 class AceBaseRequestError extends Error {
+    get isNetworkError() {
+        return this.response === null;
+    }
     constructor(request, response, code, message = 'unknown error') {
         super(message);
         this.request = request;
         this.response = response;
         this.code = code;
         this.message = message;
-    }
-    get isNetworkError() {
-        return this.response === null;
     }
 }
 exports.AceBaseRequestError = AceBaseRequestError;
@@ -3405,7 +3405,7 @@ class AceBaseBase extends simple_event_emitter_1.SimpleEventEmitter {
 }
 exports.AceBaseBase = AceBaseBase;
 
-},{"./data-reference":21,"./debug":23,"./optional-observable":27,"./simple-colors":34,"./simple-event-emitter":35,"./type-mappings":38}],15:[function(require,module,exports){
+},{"./data-reference":21,"./debug":23,"./optional-observable":27,"./simple-colors":34,"./simple-event-emitter":35,"./type-mappings":39}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Api = void 0;
@@ -4834,7 +4834,7 @@ class OrderedCollectionProxy {
 }
 exports.OrderedCollectionProxy = OrderedCollectionProxy;
 
-},{"./data-reference":21,"./data-snapshot":22,"./id":24,"./optional-observable":27,"./path-info":29,"./path-reference":30,"./process":31,"./simple-event-emitter":35,"./utils":39}],21:[function(require,module,exports){
+},{"./data-reference":21,"./data-snapshot":22,"./id":24,"./optional-observable":27,"./path-info":29,"./path-reference":30,"./process":31,"./simple-event-emitter":35,"./utils":40}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DataReferencesArray = exports.DataSnapshotsArray = exports.DataReferenceQuery = exports.DataReference = exports.QueryDataRetrievalOptions = exports.DataRetrievalOptions = void 0;
@@ -5913,7 +5913,7 @@ class DataReferencesArray extends Array {
 }
 exports.DataReferencesArray = DataReferencesArray;
 
-},{"./data-proxy":20,"./data-snapshot":22,"./id":24,"./optional-observable":27,"./path-info":29,"./subscription":36}],22:[function(require,module,exports){
+},{"./data-proxy":20,"./data-snapshot":22,"./id":24,"./optional-observable":27,"./path-info":29,"./subscription":37}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MutationsDataSnapshot = exports.DataSnapshot = void 0;
@@ -6163,14 +6163,14 @@ Object.defineProperty(exports, "ColorStyle", { enumerable: true, get: function (
 Object.defineProperty(exports, "Colorize", { enumerable: true, get: function () { return simple_colors_1.Colorize; } });
 var schema_1 = require("./schema");
 Object.defineProperty(exports, "SchemaDefinition", { enumerable: true, get: function () { return schema_1.SchemaDefinition; } });
-var optional_observable_1 = require("./optional-observable");
-Object.defineProperty(exports, "SimpleObservable", { enumerable: true, get: function () { return optional_observable_1.SimpleObservable; } });
+var simple_observable_1 = require("./simple-observable");
+Object.defineProperty(exports, "SimpleObservable", { enumerable: true, get: function () { return simple_observable_1.SimpleObservable; } });
 var partial_array_1 = require("./partial-array");
 Object.defineProperty(exports, "PartialArray", { enumerable: true, get: function () { return partial_array_1.PartialArray; } });
 const object_collection_1 = require("./object-collection");
 Object.defineProperty(exports, "ObjectCollection", { enumerable: true, get: function () { return object_collection_1.ObjectCollection; } });
 
-},{"./acebase-base":14,"./api":15,"./ascii85":16,"./data-proxy":20,"./data-reference":21,"./data-snapshot":22,"./debug":23,"./id":24,"./object-collection":26,"./optional-observable":27,"./partial-array":28,"./path-info":29,"./path-reference":30,"./schema":32,"./simple-cache":33,"./simple-colors":34,"./simple-event-emitter":35,"./subscription":36,"./transport":37,"./type-mappings":38,"./utils":39}],26:[function(require,module,exports){
+},{"./acebase-base":14,"./api":15,"./ascii85":16,"./data-proxy":20,"./data-reference":21,"./data-snapshot":22,"./debug":23,"./id":24,"./object-collection":26,"./partial-array":28,"./path-info":29,"./path-reference":30,"./schema":32,"./simple-cache":33,"./simple-colors":34,"./simple-event-emitter":35,"./simple-observable":36,"./subscription":37,"./transport":38,"./type-mappings":39,"./utils":40}],26:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ObjectCollection = void 0;
@@ -6225,7 +6225,8 @@ exports.ObjectCollection = ObjectCollection;
 },{"./id":24}],27:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SimpleObservable = exports.setObservable = exports.getObservable = void 0;
+exports.setObservable = exports.getObservable = void 0;
+const simple_observable_1 = require("./simple-observable");
 const utils_1 = require("./utils");
 let _shimRequested = false;
 let _observable;
@@ -6244,11 +6245,11 @@ let _observable;
     }
     catch (_a) {
         // rxjs Observable not available, setObservable must be used if usage of SimpleObservable is not desired
-        _observable = SimpleObservable;
+        _observable = simple_observable_1.SimpleObservable;
     }
 })();
 function getObservable() {
-    if (_observable === SimpleObservable && !_shimRequested) {
+    if (_observable === simple_observable_1.SimpleObservable && !_shimRequested) {
         console.warn('Using AceBase\'s simple Observable implementation because rxjs is not available. ' +
             'Add it to your project with "npm install rxjs", add it to AceBase using db.setObservable(Observable), ' +
             'or call db.setObservable("shim") to suppress this warning');
@@ -6261,7 +6262,7 @@ function getObservable() {
 exports.getObservable = getObservable;
 function setObservable(Observable) {
     if (Observable === 'shim') {
-        _observable = SimpleObservable;
+        _observable = simple_observable_1.SimpleObservable;
         _shimRequested = true;
     }
     else {
@@ -6269,51 +6270,8 @@ function setObservable(Observable) {
     }
 }
 exports.setObservable = setObservable;
-/**
- * rxjs is an optional dependency that only needs installing when any of AceBase's observe methods are used.
- * If for some reason rxjs is not available (eg in test suite), we can provide a shim. This class is used when
- * `db.setObservable("shim")` is called
- */
-class SimpleObservable {
-    constructor(create) {
-        this._active = false;
-        this._subscribers = [];
-        this._create = create;
-    }
-    subscribe(subscriber) {
-        if (!this._active) {
-            const next = (value) => {
-                // emit value to all subscribers
-                this._subscribers.forEach(s => {
-                    try {
-                        s(value);
-                    }
-                    catch (err) {
-                        console.error('Error in subscriber callback:', err);
-                    }
-                });
-            };
-            const observer = { next };
-            this._cleanup = this._create(observer);
-            this._active = true;
-        }
-        this._subscribers.push(subscriber);
-        const unsubscribe = () => {
-            this._subscribers.splice(this._subscribers.indexOf(subscriber), 1);
-            if (this._subscribers.length === 0) {
-                this._active = false;
-                this._cleanup();
-            }
-        };
-        const subscription = {
-            unsubscribe,
-        };
-        return subscription;
-    }
-}
-exports.SimpleObservable = SimpleObservable;
 
-},{"./utils":39,"rxjs":40}],28:[function(require,module,exports){
+},{"./simple-observable":36,"./utils":40,"rxjs":41}],28:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PartialArray = void 0;
@@ -7111,7 +7069,7 @@ class SimpleCache {
 }
 exports.SimpleCache = SimpleCache;
 
-},{"./utils":39}],34:[function(require,module,exports){
+},{"./utils":40}],34:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Colorize = exports.SetColorsEnabled = exports.ColorsSupported = exports.ColorStyle = void 0;
@@ -7351,6 +7309,54 @@ exports.SimpleEventEmitter = SimpleEventEmitter;
 },{}],36:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SimpleObservable = void 0;
+/**
+ * rxjs is an optional dependency that only needs installing when any of AceBase's observe methods are used.
+ * If for some reason rxjs is not available (eg in test suite), we can provide a shim. This class is used when
+ * `db.setObservable("shim")` is called
+ */
+class SimpleObservable {
+    constructor(create) {
+        this._active = false;
+        this._subscribers = [];
+        this._create = create;
+    }
+    subscribe(subscriber) {
+        if (!this._active) {
+            const next = (value) => {
+                // emit value to all subscribers
+                this._subscribers.forEach(s => {
+                    try {
+                        s(value);
+                    }
+                    catch (err) {
+                        console.error('Error in subscriber callback:', err);
+                    }
+                });
+            };
+            const observer = { next };
+            this._cleanup = this._create(observer);
+            this._active = true;
+        }
+        this._subscribers.push(subscriber);
+        const unsubscribe = () => {
+            this._subscribers.splice(this._subscribers.indexOf(subscriber), 1);
+            if (this._subscribers.length === 0) {
+                this._active = false;
+                this._cleanup();
+            }
+        };
+        const subscription = {
+            unsubscribe,
+        };
+        return subscription;
+    }
+}
+exports.SimpleObservable = SimpleObservable;
+
+},{}],37:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.EventStream = exports.EventPublisher = exports.EventSubscription = void 0;
 class EventSubscription {
     /**
@@ -7535,7 +7541,7 @@ class EventStream {
 }
 exports.EventStream = EventStream;
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deserialize2 = exports.serialize2 = exports.serialize = exports.detectSerializeVersion = exports.deserialize = void 0;
@@ -7871,7 +7877,7 @@ const deserialize2 = (data) => {
 };
 exports.deserialize2 = deserialize2;
 
-},{"./ascii85":16,"./partial-array":28,"./path-info":29,"./path-reference":30,"./utils":39}],38:[function(require,module,exports){
+},{"./ascii85":16,"./partial-array":28,"./path-info":29,"./path-reference":30,"./utils":40}],39:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TypeMappings = void 0;
@@ -8193,7 +8199,7 @@ class TypeMappings {
 }
 exports.TypeMappings = TypeMappings;
 
-},{"./data-reference":21,"./data-snapshot":22,"./path-info":29,"./utils":39}],39:[function(require,module,exports){
+},{"./data-reference":21,"./data-snapshot":22,"./path-info":29,"./utils":40}],40:[function(require,module,exports){
 (function (global,Buffer){(function (){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -8219,46 +8225,63 @@ function bytesToNumber(bytes) {
     return nr;
 }
 exports.bytesToNumber = bytesToNumber;
-const big = {
-    zero: BigInt(0),
-    one: BigInt(1),
-    two: BigInt(2),
-    eight: BigInt(8),
-    ff: BigInt(0xff),
+const hasBigIntSupport = (() => {
+    try {
+        return typeof BigInt(0) === 'bigint';
+    }
+    catch (err) {
+        return false;
+    }
+})();
+const noBigIntError = 'BigInt is not supported on this platform';
+const bigIntFunctions = {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    bigintToBytes(number) { throw new Error(noBigIntError); },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    bytesToBigint(bytes) { throw new Error(noBigIntError); },
 };
-function bigintToBytes(number) {
-    if (typeof number !== 'bigint') {
-        throw new Error('number must be a bigint');
-    }
-    const bytes = [];
-    const negative = number < big.zero;
-    do {
-        const byte = Number(number & big.ff); // NOTE: bits are inverted on negative numbers
-        bytes.push(byte);
-        number = number >> big.eight;
-    } while (number !== (negative ? -big.one : big.zero));
-    bytes.reverse(); // little-endian
-    if (negative ? bytes[0] < 128 : bytes[0] >= 128) {
-        bytes.unshift(negative ? 255 : 0); // extra sign byte needed
-    }
-    return bytes;
-}
-exports.bigintToBytes = bigintToBytes;
-function bytesToBigint(bytes) {
-    const negative = bytes[0] >= 128;
-    let number = big.zero;
-    for (let b of bytes) {
+if (hasBigIntSupport) {
+    const big = {
+        zero: BigInt(0),
+        one: BigInt(1),
+        two: BigInt(2),
+        eight: BigInt(8),
+        ff: BigInt(0xff),
+    };
+    bigIntFunctions.bigintToBytes = function bigintToBytes(number) {
+        if (typeof number !== 'bigint') {
+            throw new Error('number must be a bigint');
+        }
+        const bytes = [];
+        const negative = number < big.zero;
+        do {
+            const byte = Number(number & big.ff); // NOTE: bits are inverted on negative numbers
+            bytes.push(byte);
+            number = number >> big.eight;
+        } while (number !== (negative ? -big.one : big.zero));
+        bytes.reverse(); // little-endian
+        if (negative ? bytes[0] < 128 : bytes[0] >= 128) {
+            bytes.unshift(negative ? 255 : 0); // extra sign byte needed
+        }
+        return bytes;
+    };
+    bigIntFunctions.bytesToBigint = function bytesToBigint(bytes) {
+        const negative = bytes[0] >= 128;
+        let number = big.zero;
+        for (let b of bytes) {
+            if (negative) {
+                b = ~b & 0xff;
+            } // Invert the bits
+            number = (number << big.eight) + BigInt(b);
+        }
         if (negative) {
-            b = ~b & 0xff;
-        } // Invert the bits
-        number = (number << big.eight) + BigInt(b);
-    }
-    if (negative) {
-        number = -(number + big.one);
-    }
-    return number;
+            number = -(number + big.one);
+        }
+        return number;
+    };
 }
-exports.bytesToBigint = bytesToBigint;
+exports.bigintToBytes = bigIntFunctions.bigintToBytes;
+exports.bytesToBigint = bigIntFunctions.bytesToBigint;
 /**
  * Converts a string to a utf-8 encoded Uint8Array
  */
@@ -8642,9 +8665,9 @@ function getGlobalObject() {
 exports.getGlobalObject = getGlobalObject;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./partial-array":28,"./path-reference":30,"./process":31,"buffer":40}],40:[function(require,module,exports){
+},{"./partial-array":28,"./path-reference":30,"./process":31,"buffer":41}],41:[function(require,module,exports){
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * Socket.IO v2.5.0
@@ -8657,5 +8680,5 @@ var u,f,l,d=String.fromCharCode;t.exports={version:"2.1.2",encode:a,decode:h}},f
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":40}]},{},[5])(5)
+},{"buffer":41}]},{},[5])(5)
 });

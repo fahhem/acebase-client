@@ -140,7 +140,7 @@ export declare class ConnectionSettings {
 /**
  * Settings to connect to a remote AceBase server
  */
-export declare type AceBaseClientConnectionSettings = Omit<Partial<ConnectionSettings>, 'dbname' | 'host' | 'port' | 'sync' | 'network' | 'cache'> & Pick<ConnectionSettings, 'dbname' | 'host' | 'port'> & {
+export type AceBaseClientConnectionSettings = Omit<Partial<ConnectionSettings>, 'dbname' | 'host' | 'port' | 'sync' | 'network' | 'cache'> & Pick<ConnectionSettings, 'dbname' | 'host' | 'port'> & {
     sync?: Partial<ConnectionSettings['sync']>;
     network?: Partial<ConnectionSettings['network']>;
     cache?: Partial<ConnectionSettings['cache']>;
@@ -148,11 +148,11 @@ export declare type AceBaseClientConnectionSettings = Omit<Partial<ConnectionSet
 /**
  * Cache settings to enable offline access and synchronization
  */
-export declare type AceBaseClientCacheSettings = AceBaseClientConnectionSettings['cache'];
+export type AceBaseClientCacheSettings = AceBaseClientConnectionSettings['cache'];
 /**
  * Settings for synchronization between server and cache databases
  */
-export declare type AceBaseClientSyncSettings = AceBaseClientConnectionSettings['sync'];
+export type AceBaseClientSyncSettings = AceBaseClientConnectionSettings['sync'];
 /**
  * AceBaseClient lets you connect to a remote (or local) AceBase server over http(s)
  */
