@@ -31,6 +31,12 @@ export class ConnectionSettings {
     https = true;
 
     /**
+     * Expose Firebase-compatible API. Default: `false`
+     * @default true
+     */
+    firebaseCompat = false;
+
+    /**
      * Root path of the AceBase server instance. Specify this if the server's `rootPath` has been configured.
      * @default ''
      */
@@ -168,6 +174,7 @@ export class ConnectionSettings {
         this.autoConnectDelay = typeof settings.autoConnectDelay === 'number' ? settings.autoConnectDelay : 0;
         this.logLevel = typeof settings.logLevel === 'string' ? settings.logLevel : 'log';
         this.sponsor = typeof settings.sponsor === 'boolean' ? settings.sponsor : false;
+        this.firebaseCompat = typeof settings.firebaseCompat === 'boolean' ? settings.firebaseCompat : false;
 
         // Set cache settings
         this.cache = {
@@ -240,7 +247,7 @@ export class AceBaseClient extends AceBaseBase {
             init = { host, port, dbname, https };
         }
         const settings = new ConnectionSettings(init); // init instanceof ConnectionSettings ? init : new ConnectionSettings(init);
-        super(settings.dbname, { info: 'realtime database client', sponsor: settings.sponsor });
+        super(settings.dbname, { info: 'realtime database client', sponsor: settings.sponsor, firebaseCompat: settings.firebaseCompat });
 
         /*
             TODO: improve init flow with await/async (requires Node 7.6+)
